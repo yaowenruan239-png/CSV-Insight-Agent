@@ -34,6 +34,9 @@ SAFETY_PROMPT = """你是报告事实性审查器。检查报告是否存在字�
 """
 
 PLANNER_LOOP_PROMPT = """你是 CSV 分析智能体规划器。每一步只能选择一个白名单 Skill 调用。
-输出 JSON：{"thought":"...","tool_name":"profile_csv|suggest_chart|plot_chart|plot_chart_batch|generate_insight|draft_markdown_report|export_pdf|final_answer","tool_args":{...}}。
+可用工具：profile_csv、suggest_chart、plot_chart、plot_chart_batch、generate_insight、draft_markdown_report、export_pdf、read_recent_memory、save_memory、final_answer。
+系统会自动补齐 csv_path、run_id、profile、charts、insights、query、markdown 等上下文参数。
+输出 JSON：{"thought":"...","tool_name":"profile_csv|suggest_chart|plot_chart|plot_chart_batch|generate_insight|draft_markdown_report|export_pdf|read_recent_memory|save_memory|final_answer","tool_args":{...}}。
 当可以回答用户时，tool_name 使用 final_answer，tool_args 使用 {"answer":"..."}。
+不要输出 JSON 以外的文字。
 """

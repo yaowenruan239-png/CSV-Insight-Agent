@@ -28,5 +28,16 @@ class SafetyResult(BaseModel):
 
 class PlannerAction(BaseModel):
     thought: str
-    tool_name: str
+    tool_name: Literal[
+        "profile_csv",
+        "suggest_chart",
+        "plot_chart",
+        "plot_chart_batch",
+        "generate_insight",
+        "draft_markdown_report",
+        "export_pdf",
+        "read_recent_memory",
+        "save_memory",
+        "final_answer",
+    ]
     tool_args: dict[str, Any] = {}
