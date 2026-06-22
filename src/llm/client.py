@@ -59,6 +59,26 @@ class LLMClient:
                     augmented.append({"role": "user", "content": "上次输出无法解析为合法 JSON。请重新输出。"})
         return fallback or {}
 
+    def chat_json_with_trace(self, messages: list[dict[str, str]], schema: type[BaseModel] | None = None) -> dict[str, Any]:
+        augmented = list(messages) + [{"role": "system", "content": "请只输出有效 JSON 对象，不要包含其他文字。"}]
+        raw_text = ""
+        data = None
+        try:
+            raw_text = self.chat(augmented)
+        except RuntimeError as exc:
+            return {"success": False, "phase": "llm_call", "error": str(exc), "raw_text": raw_text, "data": None}
+        try:
+            data = extract_json_object(raw_text)
+        except ValueError as exc:
+            return {"success": False, "phase": "llm_parse", "error": str(exc), "raw_text": raw_text, "data": None}
+        if schema:
+            try:
+                validated = schema.model_validate(data).model_dump()
+            except ValidationError as exc:
+                return {"success": False, "phase": "validation", "error": str(exc), "raw_text": raw_text, "data": data}
+            return {"success": True, "phase": "ok", "error": None, "raw_text": raw_text, "data": validated}
+        return {"success": True, "phase": "ok", "error": None, "raw_text": raw_text, "data": data}
+
     def _detect_backends(self) -> list[BackendConfig]:
         backends: list[BackendConfig] = []
         deepseek_key = os.getenv("DEEPSEEK_API_KEY")
