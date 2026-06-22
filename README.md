@@ -77,6 +77,8 @@ python main.py examples/sales.csv "分析销售趋势并画图" --mode quick_cha
 
 上传 CSV 和输入分析目标，输出多张图表、完整 Markdown 报告和 PDF/HTML。
 
+Full Report Mode 会生成咨询报告风格的 HTML/PDF：封面、执行摘要、关键指标卡片、核心发现、图文交错分析、行动建议、局限性说明和字段附录。WeasyPrint 是主 PDF 引擎；如果本机缺少 GTK/Pango/Cairo 等系统库，会自动保留 HTML fallback，工作流不会因为 PDF 失败而中断。
+
 ```bash
 python main.py examples/sales.csv "生成完整销售数据分析报告" --mode full_report
 ```
@@ -84,6 +86,8 @@ python main.py examples/sales.csv "生成完整销售数据分析报告" --mode 
 ### Planner Loop Mode
 
 LLM 输出 JSON 动作，系统通过 SkillRegistry 调用白名单 Skill，并展示工具调用过程。
+
+Planner Loop Mode 会展示每一步 Planner Trace：模型想法、工具名、自动补齐后的参数、工具结果摘要和错误原因。该模式适合演示 Agent 如何逐步规划和调用工具。
 
 ```bash
 python main.py examples/sales.csv "自动选择工具分析销售数据" --mode planner_loop

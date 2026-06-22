@@ -89,5 +89,19 @@ if st.button("开始分析", type="primary"):
             st.download_button(label, Path(path).read_bytes(), file_name=Path(path).name)
 
     if result.get("planner_steps"):
-        st.markdown("### Planner Loop 步骤")
-        st.json(result["planner_steps"])
+        st.markdown("### Planner Loop 执行过程")
+        for step in result["planner_steps"]:
+            status = "成功" if step.get("success") else "失败"
+            label = step.get("tool_name") or step.get("phase") or "unknown"
+            with st.expander(f"Step {step.get('step_index')}: {label} · {status}", expanded=True):
+                st.markdown(f"**Thought:** {step.get('thought', '')}")
+                st.markdown(f"**Skill:** `{step.get('tool_name', '')}`")
+                st.markdown(f"**Phase:** `{step.get('phase', '')}`")
+                if step.get("error"):
+                    st.error(step["error"])
+                if step.get("result_summary"):
+                    st.info(step["result_summary"])
+                st.markdown("**Normalized Args**")
+                st.json(step.get("normalized_args", {}))
+        with st.expander("查看原始 Planner JSON"):
+            st.json(result["planner_steps"])
