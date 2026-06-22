@@ -1,4 +1,5 @@
 from src.graph.nodes.route_node import route_task
+from src.graph.state import GraphState
 
 
 def test_route_task_respects_explicit_quick_mode():
@@ -39,3 +40,7 @@ def test_route_task_rule_fallback_to_quick_chart():
     result = route_task(state)
 
     assert result["route_decision"]["mode"] == "quick_chart"
+
+
+def test_graph_state_declares_planner_steps():
+    assert "planner_steps" in GraphState.__annotations__

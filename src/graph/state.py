@@ -19,6 +19,7 @@ class GraphState(TypedDict, total=False):
     html_path: str | None
     pdf_path: str | None
     final_answer: str
+    planner_steps: list[dict[str, Any]]
     errors: list[str]
     retry_count: int
     status: str
