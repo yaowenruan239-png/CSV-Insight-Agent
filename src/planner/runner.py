@@ -13,7 +13,7 @@ FINAL_TOOL = "final_answer"
 
 
 class PlannerLoopRunner:
-    def __init__(self, llm: Any | None = None, registry: SkillRegistry | None = None, max_steps: int = 5):
+    def __init__(self, llm: Any | None = None, registry: SkillRegistry | None = None, max_steps: int = 8):
         self.llm = llm or LLMClient()
         self.registry = registry or SkillRegistry()
         self.max_steps = max_steps
@@ -36,7 +36,9 @@ class PlannerLoopRunner:
                 )
                 steps.append(trace.to_dict())
                 consecutive_failures += 1
+                messages.append(self._build_repair_message(parsed, state))
                 if consecutive_failures >= 2:
+                    self._complete_with_deterministic_fallback(state, steps, start_index=index + 1)
                     break
                 continue
 
@@ -102,6 +104,8 @@ class PlannerLoopRunner:
 
         state["planner_steps"] = steps
         if not state.get("final_answer"):
+            self._complete_with_deterministic_fallback(state, steps, start_index=len(steps) + 1)
+        if not state.get("final_answer"):
             state["final_answer"] = self._interrupted_answer(steps, state)
         return state
 
@@ -121,6 +125,32 @@ class PlannerLoopRunner:
                 ),
             },
         ]
+
+    def _build_repair_message(self, parsed: dict[str, Any], state: dict[str, Any]) -> dict[str, str]:
+        raw_text = str(parsed.get("raw_text") or "")[:1200]
+        error = parsed.get("error") or "未知 JSON 错误"
+        next_hint = ""
+        if state.get("generated_charts") and not state.get("analysis_insights"):
+            next_hint = "当前已经生成图表，建议下一步调用 generate_insight。"
+        elif state.get("analysis_insights") and not state.get("report_markdown"):
+            next_hint = "当前已经生成洞察，建议下一步调用 draft_markdown_report。"
+        elif state.get("report_markdown") and not state.get("report_path"):
+            next_hint = "当前已经生成 Markdown 报告，建议下一步调用 export_pdf。"
+        return {
+            "role": "user",
+            "content": (
+                "上一次输出不是合法 JSON，系统无法解析。"
+                f"错误信息：{error}。"
+                f"原始输出片段：{raw_text}。"
+                f"{next_hint}"
+                "请重新输出一个严格合法的 JSON 对象，不要使用 Markdown，不要添加解释文字。"
+                "格式必须是："
+                '{"thought":"下一步思考","tool_name":"generate_insight","tool_args":{}}'
+                "。如果任务已经足够完成，请使用："
+                '{"thought":"任务完成","tool_name":"final_answer","tool_args":{"answer":"中文总结"}}'
+                "。"
+            ),
+        }
 
     def _normalize_args(self, tool_name: str, args: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
         normalized = dict(args)
@@ -160,6 +190,45 @@ class PlannerLoopRunner:
             state["html_path"] = result.get("html_path")
         if result.get("error"):
             state.setdefault("errors", []).append(result["error"])
+
+    def _complete_with_deterministic_fallback(self, state: dict[str, Any], steps: list[dict[str, Any]], start_index: int) -> None:
+        if not state.get("generated_charts"):
+            return
+        fallback_plan: list[tuple[str, dict[str, Any]]] = []
+        if not state.get("analysis_insights") and self.registry.get("generate_insight"):
+            fallback_plan.append(("generate_insight", {}))
+        if not state.get("report_markdown") and self.registry.get("draft_markdown_report"):
+            fallback_plan.append(("draft_markdown_report", {}))
+        if not state.get("report_path") and self.registry.get("export_pdf"):
+            fallback_plan.append(("export_pdf", {}))
+
+        for offset, (tool_name, tool_args) in enumerate(fallback_plan):
+            normalized_args = self._normalize_args(tool_name, tool_args, state)
+            result = self.registry.call(tool_name, **normalized_args)
+            self._merge_result(tool_name, result, state)
+            steps.append(
+                PlannerStepTrace(
+                    step_index=start_index + offset,
+                    thought="LLM 连续输出非法 JSON，系统根据当前状态执行确定性 fallback。",
+                    tool_name=tool_name,
+                    tool_args=tool_args,
+                    normalized_args=normalized_args,
+                    result_summary=self._summarize_result(result),
+                    success=bool(result.get("success")),
+                    error=result.get("error"),
+                    raw_model_output="",
+                    phase="deterministic_fallback",
+                ).to_dict()
+            )
+        if fallback_plan:
+            chart_count = len(state.get("generated_charts", []))
+            insight_count = len(state.get("analysis_insights", []))
+            report_path = state.get("report_path") or state.get("html_path") or ""
+            state["final_answer"] = (
+                f"Planner Loop 已完成分析，并已通过确定性 fallback 完成分析收尾。"
+                f"已生成图表 {chart_count} 张，洞察 {insight_count} 条。"
+                f"报告路径：{report_path or '未生成报告文件'}。"
+            )
 
     def _summarize_result(self, result: dict[str, Any]) -> str:
         if result.get("path"):
