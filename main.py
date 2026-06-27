@@ -11,7 +11,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run CSV-Insight-Agent from CLI")
     parser.add_argument("csv_path")
     parser.add_argument("query")
-    parser.add_argument("--mode", choices=["quick_chart", "full_report", "planner_loop"], default="quick_chart")
+    parser.add_argument("--mode", choices=["quick_chart", "full_report", "planner_loop", "agent_loop"], default="quick_chart")
     args = parser.parse_args()
     state = {
         "run_id": uuid4().hex[:12],

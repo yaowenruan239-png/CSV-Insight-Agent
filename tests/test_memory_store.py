@@ -45,3 +45,26 @@ def test_build_memory_context_mentions_recent_preferences(tmp_path):
 
     assert "最近的数据分析任务" in context
     assert "full_report" in context
+
+
+def test_update_chart_preference_counts_chart_types(tmp_path):
+    store = MemoryStore(tmp_path)
+
+    store.update_chart_preference(["bar", "line", "bar"], mode="full_report")
+
+    preference = store.load_chart_preference()
+    assert preference["chart_type_counts"]["bar"] == 2
+    assert preference["chart_type_counts"]["line"] == 1
+    assert preference["last_used_chart_types"] == ["bar", "line", "bar"]
+    assert preference["preferred_report_mode"] == "full_report"
+
+
+def test_build_memory_context_includes_chart_preference(tmp_path):
+    store = MemoryStore(tmp_path)
+    store.update_chart_preference(["bar", "line"], mode="full_report")
+
+    context = store.build_memory_context("继续分析销售")
+
+    assert "常用图表偏好" in context
+    assert "bar" in context
+    assert "line" in context

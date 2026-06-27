@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from src.graph.state import GraphState
 
-VALID_MODES = {"quick_chart", "full_report", "planner_loop"}
+VALID_MODES = {"quick_chart", "full_report", "planner_loop", "agent_loop"}
 
 
 def route_task(state: GraphState) -> GraphState:

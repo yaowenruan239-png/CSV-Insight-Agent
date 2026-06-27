@@ -5,6 +5,7 @@ from src.graph.nodes.chart_planning_node import plan_multi_charts, plan_single_c
 from src.graph.nodes.export_node import export_report
 from src.graph.nodes.finalize_node import finalize, finalize_error
 from src.graph.nodes.insight_node import explain_chart, generate_insights
+from src.graph.nodes.langchain_agent_node import langchain_agent_loop
 from src.graph.nodes.memory_node import load_memory_context
 from src.graph.nodes.planner_loop_node import json_planner_loop
 from src.graph.nodes.profile_node import profile_csv_node
@@ -29,6 +30,7 @@ def create_graph_workflow():
     workflow.add_node("safety_check", safety_check)
     workflow.add_node("export_report", export_report)
     workflow.add_node("json_planner_loop", json_planner_loop)
+    workflow.add_node("langchain_agent_loop", langchain_agent_loop)
     workflow.add_node("finalize", finalize)
     workflow.add_node("finalize_error", finalize_error)
 
@@ -42,6 +44,7 @@ def create_graph_workflow():
             "quick_chart": "plan_single_chart",
             "full_report": "plan_multi_charts",
             "planner_loop": "json_planner_loop",
+            "agent_loop": "langchain_agent_loop",
         },
     )
     workflow.add_edge("plan_single_chart", "execute_chart")
@@ -62,6 +65,7 @@ def create_graph_workflow():
     )
     workflow.add_edge("export_report", "finalize")
     workflow.add_edge("json_planner_loop", "finalize")
+    workflow.add_edge("langchain_agent_loop", "finalize")
     workflow.add_edge("finalize", END)
     workflow.add_edge("finalize_error", END)
     return workflow.compile()

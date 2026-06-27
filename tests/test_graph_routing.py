@@ -26,6 +26,14 @@ def test_route_task_respects_explicit_planner_mode():
     assert result["route_decision"]["mode"] == "planner_loop"
 
 
+def test_route_task_respects_explicit_agent_loop_mode():
+    state = {"mode": "agent_loop", "user_query": "用 LangChain Agent 自动规划"}
+
+    result = route_task(state)
+
+    assert result["route_decision"]["mode"] == "agent_loop"
+
+
 def test_route_task_rule_fallback_to_full_report():
     state = {"mode": "unknown", "user_query": "请生成完整报告"}
 
@@ -44,3 +52,7 @@ def test_route_task_rule_fallback_to_quick_chart():
 
 def test_graph_state_declares_planner_steps():
     assert "planner_steps" in GraphState.__annotations__
+
+
+def test_graph_state_declares_agent_steps():
+    assert "agent_steps" in GraphState.__annotations__

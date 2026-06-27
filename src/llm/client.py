@@ -34,6 +34,28 @@ class LLMClient:
     def active_backend(self) -> str:
         return self._active_backend
 
+    def as_langchain_chat_model(self):
+        if not self.backends:
+            return None
+        backend = self.backends[0]
+        self._active_backend = backend.name
+        if backend.name in {"deepseek", "openai"}:
+            from langchain_openai import ChatOpenAI
+
+            kwargs: dict[str, Any] = {
+                "model": backend.model,
+                "temperature": self.temperature,
+                "api_key": backend.api_key,
+            }
+            if backend.base_url:
+                kwargs["base_url"] = backend.base_url
+            return ChatOpenAI(**kwargs)
+        if backend.name == "ollama":
+            from langchain_community.chat_models import ChatOllama
+
+            return ChatOllama(model=backend.model, temperature=self.temperature)
+        return None
+
     def chat(self, messages: list[dict[str, str]]) -> str:
         last_error: Exception | None = None
         for backend in self.backends:

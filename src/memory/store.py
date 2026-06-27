@@ -47,6 +47,9 @@ class MemoryStore:
 
             self._cursor = cursor
             self.cursor_path.write_text(str(cursor), encoding="utf-8")
+            chart_types = entry.get("chart_types") or []
+            if chart_types:
+                self.update_chart_preference(chart_types, mode=str(entry.get("mode") or ""))
             return cursor
 
     def get_recent_tasks(self, limit: int = 5) -> list[dict[str, Any]]:
@@ -62,6 +65,22 @@ class MemoryStore:
             for task in self.get_recent_tasks(1000)
             if chart_type in (task.get("chart_types") or [])
         ]
+
+    def update_chart_preference(self, chart_types: list[str], mode: str = "") -> None:
+        preference = self.load_chart_preference()
+        counts = preference.get("chart_type_counts")
+        if not isinstance(counts, dict):
+            counts = {}
+        for chart_type in chart_types:
+            if not chart_type:
+                continue
+            counts[chart_type] = int(counts.get(chart_type, 0)) + 1
+        preference["chart_type_counts"] = counts
+        preference["last_used_chart_types"] = list(chart_types)
+        if mode:
+            preference["preferred_report_mode"] = mode
+        preference["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        self.save_chart_preference(preference)
 
     def load_user_profile(self) -> dict[str, Any]:
         return self._read_json(self.profile_path)
@@ -92,6 +111,11 @@ class MemoryStore:
         if profile:
             lines.append(f"用户偏好：{json.dumps(profile, ensure_ascii=False)}")
         if preference:
+            chart_counts = preference.get("chart_type_counts")
+            if isinstance(chart_counts, dict) and chart_counts:
+                top_charts = sorted(chart_counts.items(), key=lambda item: item[1], reverse=True)[:3]
+                chart_text = "，".join(f"{name}({count})" for name, count in top_charts)
+                lines.append(f"常用图表偏好：{chart_text}。")
             lines.append(f"图表偏好：{json.dumps(preference, ensure_ascii=False)}")
         if query:
             lines.append(f"本次问题：{query}")

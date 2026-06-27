@@ -20,6 +20,7 @@ class GraphState(TypedDict, total=False):
     pdf_path: str | None
     final_answer: str
     planner_steps: list[dict[str, Any]]
+    agent_steps: list[dict[str, Any]]
     errors: list[str]
     retry_count: int
     status: str

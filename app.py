@@ -13,8 +13,8 @@ from src.memory.store import MemoryStore
 ensure_runtime_dirs()
 
 st.set_page_config(page_title="CSV-Insight-Agent", layout="wide")
-st.title("CSV-Insight-Agent：基于 LangGraph + Skill Registry + Memory 的 CSV 数据分析智能体")
-st.caption("上传 CSV，用自然语言生成图表、中文洞察、Markdown/PDF 报告，或运行 JSON Planner Loop。")
+st.title("CSV-Insight-Agent：基于 LangChain Agent Loop + Skill Registry + Memory 的 CSV 数据分析智能体")
+st.caption("上传 CSV，用自然语言生成图表、中文洞察、Markdown/PDF 报告，或运行 LangChain/ReAct Agent Loop。")
 
 store = MemoryStore()
 with st.sidebar:
@@ -32,11 +32,12 @@ with st.sidebar:
 uploaded = st.file_uploader("上传 CSV", type=["csv"])
 mode = st.selectbox(
     "执行模式",
-    ["quick_chart", "full_report", "planner_loop"],
+    ["quick_chart", "full_report", "planner_loop", "agent_loop"],
     format_func={
         "quick_chart": "Quick Chart Mode：单图 + 中文解释",
         "full_report": "Full Report Mode：多图 + 报告 + PDF/HTML",
         "planner_loop": "Planner Loop Mode：JSON 工具规划",
+        "agent_loop": "LangChain Agent Loop：ReAct 工具循环",
     }.get,
 )
 query = st.text_area("分析需求", value="分析这个 CSV 数据并生成有价值的中文洞察。")
@@ -89,19 +90,23 @@ if st.button("开始分析", type="primary"):
             st.download_button(label, Path(path).read_bytes(), file_name=Path(path).name)
 
     if result.get("planner_steps"):
-        st.markdown("### Planner Loop 执行过程")
+        st.markdown("### Agent 执行过程")
         for step in result["planner_steps"]:
             status = "成功" if step.get("success") else "失败"
-            label = step.get("tool_name") or step.get("phase") or "unknown"
+            label = step.get("tool_name") or step.get("action") or step.get("phase") or "unknown"
             with st.expander(f"Step {step.get('step_index')}: {label} · {status}", expanded=True):
                 st.markdown(f"**Thought:** {step.get('thought', '')}")
-                st.markdown(f"**Skill:** `{step.get('tool_name', '')}`")
-                st.markdown(f"**Phase:** `{step.get('phase', '')}`")
+                st.markdown(f"**Action / Skill:** `{label}`")
+                if step.get("phase"):
+                    st.markdown(f"**Phase:** `{step.get('phase', '')}`")
                 if step.get("error"):
                     st.error(step["error"])
-                if step.get("result_summary"):
+                if step.get("observation") is not None:
+                    st.markdown("**Observation**")
+                    st.json(step.get("observation"))
+                elif step.get("result_summary"):
                     st.info(step["result_summary"])
-                st.markdown("**Normalized Args**")
-                st.json(step.get("normalized_args", {}))
-        with st.expander("查看原始 Planner JSON"):
+                st.markdown("**Arguments**")
+                st.json(step.get("normalized_args") or step.get("action_input") or {})
+        with st.expander("查看原始 Agent Trace"):
             st.json(result["planner_steps"])
